@@ -1,6 +1,6 @@
 const http = require('http');
 const WebSocket = require('ws');
-const PORT = 6969;
+const PORT = process.env.PORT || 6969;
 const fs = require('fs');
 const DiffMatchPatch = require('diff-match-patch');
 const dmp = new DiffMatchPatch();
@@ -92,6 +92,6 @@ wsServer.on('connection', (ws, headers) => {
 
 });
 
-httpServer.listen(6969, () => {
+httpServer.listen(PORT, () => {
   console.log(`HTTP server running on port ${PORT}`);
 });
