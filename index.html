@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+    <title>MayText</title>
+    <!-- <script src="markdown.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="diff_match_patch.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
+    <script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    
+    <script>
+        let shitHappensAllTheTime='';
+        globalThis['parseMd'] = undefined;
+        globalThis['rawMarkdown'] = '';
+        
+        // window['markdown'].ready.then(markdown => {
+        //     globalThis.parseMd = a=>markdown.parse(a.replace(/(?<!\n)\n(?!\n)/g, "\n\n"));
+        // });
+        globalThis.parseMd = a=>marked.parse(a.replace(/(?<!\n)\n(?!\n)/g, "\n\n"));
+        
+        const dmp = new diff_match_patch();
+        function setText(text){
+            document.querySelector('#overthere').innerHTML = text;
+            let sec1 = document.querySelector('#section1');
+            sec1.scrollTop = sec1.scrollHeight;
+        }
+        function setupPage(rawMd){
+            globalThis.rawMarkdown=rawMd;
+            setText(rawMd?(globalThis.parseMd?.(globalThis.rawMarkdown)):rawMd);
+        }
+        function updatePage(diffText){
+            globalThis.rawMarkdown = dmp.patch_apply(dmp.patch_fromText(diffText), globalThis.rawMarkdown)[0];
+            setText(globalThis.parseMd?.(globalThis.rawMarkdown));
+        }
+        function connectWebSocket() {
+            const ws = new WebSocket(window.location.origin.replace('http','ws'), ['id', window.location.href.split('?').at(-1)]);
+
+            ws.addEventListener('open', () => {
+                console.log('Connected to WebSocket server');
+                globalThis['mWs'] = ws;
+                ws.send('\x00'+shitHappensAllTheTime);
+            });
+
+            ws.addEventListener('message', (event) => {
+                if(event.data[0]==='\x00'){
+                    setupPage(event.data.substring(1));
+                }else{
+                    updatePage(event.data);
+                }
+            });
+
+            ws.addEventListener('close', () => {
+                globalThis.mWs = null;
+                console.log('Connection to WebSocket server closed');
+                document.body.innerHTML="<h1>disconnect ho gaya</h1><br>Ensure proper internet connectivity and reload the page."
+            });
+
+            ws.addEventListener('error', (error) => {
+                console.error('WebSocket error:', error);
+                document.body.innerHTML="<h1>connect nahi ho paaya</h1><br>Ensure proper internet connectivity and reload the page."
+            });
+        }
+        window.addEventListener('load', connectWebSocket);
+    </script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: "Varela Round", sans-serif;
+            font-weight: 200;
+            font-style: normal;
+        }
+        #main {
+            height:100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .section {
+            flex: 10;
+            border: 1px solid black;
+            position: relative;
+            overflow: auto;
+        }
+        #section1 {
+            color: #333333;
+            padding:10px;
+            background-image: url('data:image/jpg;base64,/9j/4AAQSkZJRgABAQIAdgB2AAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/wAALCABkAFcBAREA/8QAGgAAAwEBAQEAAAAAAAAAAAAAAgMEAQAFCf/EAD0QAAICAQIDBgMEBwcFAAAAAAECAwQRAAUSITETFCJBUXEyYWIjcoHBJDM1QlKhshU2Q3N0grFjg5LR8P/aAAgBAQAAPwD6gNBHd3aaO1mSOBEZIyfCCc5JHn01izW9xQvDIKdQEjjyONgDg48lHLSK9i+ZWr7XN3uAcu1mBxGfvfv6a9Cl2qruF9nuSfA/HwFT9IHTWNcs0Zu5XkNuJkL9oieILnB4l8/w0PY7DEi2+2Dw5zHFxll4vknr8tHHPc3SWSFC1KGIgPy+1bIz7Ly10NKsOJ9kvBJEOHHFxo5+ofmNKee1NZ7vull6I/wxFyVz68f5ctU9tarPHU3BUswzt2aygAEk+TL+Y11KJam5zU4GYQdksgjJyFJJzj00df8AbFz/AC4vz15hli/snuMhxMk4DxMMHBk9PMYOvStvYNmHbqjrArozFwuSACBhR0HXU9+hXpU1kjjZ2E0bySNlnIDcyTp8ySzyx7ntssUxVCnATyYE55EdDpC2a3bl6+0P35uTKU4eH5lumPmOunIv9nxWLe42IlksHJC8gCBgAeZ0ultcUu31nKvXsJGMSJ4WHv6+x0yGSWzXuVbwjlMBKcXDybw5Bx66khnjmr7VWibtJUaOR1XnwrwnmfTV0f7cl/0yf1HQbki1HO4xXRXlIClX5rJjoMdc+2kbie87ZXuT1hHN2kR5jmuWGRpt6buu5QWHildeydBwIWJYkYGj77uUX29jbvsD+7G3FIg9SPP8NClatZzd2e0IZD8XBzRj6Mvr/PRd53h/0daUccg+KYvmPHqB1J+WgaKjtzC1enaxZb4SwyxPoijp+Gj77ug/SG237D+AN9qB646fh10ui/bLuFlUcRyvlSykZ8AB6/PS60p2/YoZ6tdS7KpY8J8+rHHM41XtsEZze753qSVQDIPhA9AB01LM+3bU5ntSvat4zk+JgPkOijTHqWtwUPuNju8WQUiiI5HyJY9TrpbO6bbG3bQ98jA8MieFh94fmNZBLujxi7Bar2lb4oVHCB8lb199YyVrsct6qJatqHIcgcLcQGcMOh0ye7ZGzR20cLLIseW4ehYgE4/HQlK21yKI4ZbVyYHBPNmx1JJ5KNBZsbnSTvli3XBPLu2Dgj0B6lv5aYDuW5J4lNGuR4s85GH/AAo/noeG1tMPa15BZpoueBiA6L9J6EayGKleZrG2Wnqzn9YqjB/3IeX46SY4LFeShtFfjEnhkssfD/5dWPtqjco4LF2jTm4XBLlkz5cPI66YW9njM0cpsVUxmOQ+NB8m8/Y62aGKtu1WSFRH24k7XhOA2FyMjpoKjrIu6SRsGVpWww5g+AaCb+71b7sP9S6fadI94qNI4UGKRQScZORy0uqIUN/cpo+0lhmkAJOSFXngZ6aOOrZ3NFmvy8MLgMteM4BB/iPU+2lUYEmoXtvhdVPayoq5+EHpy9NBIabBIN2gNWaNQqzBsBgPRx/wdUrJeuqEpx9zr9BIy+Mj6V8vc6wPQ2xzDWjexbfqF8UjfNj5DSNz3JJdvnq2Ymr2CBiN+jcx8J6HT9zrxWr1CCYEo3aZAOM4UctZNLJLO+0UVhgVFAdmxnhI/dXz99Uy7ckm3rQWVlCKoV8AnK4wf5anhmNuaTatyhhlZE4iyHKkZxzHVTpNaJYtr3KFMkJJMoycnHDplfdAa8MNGu9p0jXj4DhV5dOI8s/LWhdv3Ry8TPXtp1I8Eq+48xrZLNmqvZbpVFiLyljTiz95fL8NFO1q5ekox2OwiiVWdkHjbOeQPl00uGeGHiqbJUErg4eU/AD9TdWPtrG3OSCUVNwqCWceKPsRxcR9jzU61qu62pEuvJDXkiyYoscQ59eI+3poZJ6luRau7Qd2sjmj8WM/NX000twYGGfc/wBHXmXVeGRh6Fug9xpcFmFeKnsVZHKnxyk+BT6k9WOtjg3LbeORCtxJGMkqAcLhj1K+RHy1kW4z22aDaa8cYj+MzeHB9OEc/wAda71b0i1txrtVtj9WwOCT9Djr7adSltR25NvsyiYJGJFkxhiCcYPl5dddX/bFz/Li/PUUU0kWwoYZSjNMU4l6gGQg6pIi2x1q0KhlszAtxM3UDqWY89JuV7cKxXLN12m7aNQEPCigsAQB58vM6buUYS4lqxVM9bsWik4V4uHJByR6e2kNBtSwrLJuMktPP2cJfKk+mOp9tU7dHIve7PdzBHMQY1YAEALjp5aRt9e8KUN2pbZnkXikjmJZXPyPVTpjLX3KOWZ4JK9utkFlOGU4z1HUaB5nnqbVNK2XeaNifU8J1TH+3Jf9Mn9R0M6WqdyS/DCJ45EVXQHDrjPMeR66jvV6j1Y9xpF41mljLKOSvlhzI9dWWJI4t3hkldUVa8hJY4A5jWPuW2XB3ewrdjIcK8iEI5+R1vY39vGajm1AP8J28aj6W8/Y6QtzaVmM9ekWuNy7IR4kB+fkPfTmqWbgMm6zCKEc+wjbC4+pvP8A41se77dHwxR8SQDwLKExFn0B/wDhoKzBpNzKkEF+oP8A0xqejHUpbfX3KwJJpSiqmeZUnoqjoNW04LT25L9pFiMkYjWMHJABzzPrz0qWvLMhn3mysUA59gjYX/c3VvbSpu33OFYNvqrFXQqyySDhDcJyAq9cfPRTXaLFV3qkIpoua8S8St90jr7aN77GMm9tciVHGOIgMQPqXyGsWKSrEbW02VlrgFjC7ZXH0t5e2ny30joLuSV8tIqYXIB8RGAT+OkTV1C95320hUHwwqcRg+3VjojuL9nxvtUgpYxkgZx6lP4dLjsQNE1TY6iurZ4pMcMa59T1J+WhRhSqrt271Q1dQEWZRxIR5Z81OnpDeqKH26ZbUDfDHI/MD6X9PfUW5VouydLVhrd+RcRoo5L7KOnudXbg1gy06kNhoO2LcTKATyXI66CWw8Sd33usrwnl26LlD94dVOtjSXb71erFOz15w+EfmUwM8j1x8joKiqi7oiKFUStgAYHwDQTf3erfdh/qXVFhVfeanEoOIpSMjocjnpQQbg1ma/OwrV5XQRL4VIXzbzOjSa3cQR7bCKtYDAmdcEj6V/M6CM2bG03YGdppEaWFCR4mxyH46XTgjeMPtFzsJQAJYXXK588qeYPzGmRTVarNW2it3mc/HJnIB+p/y00QLWYbhu10NImeHnwomfIDzOg3K3Xt7PYkrSq4wM46jmOo8tbucc0t2hHBN2TntPHjOBwjONC7QUkk2+lHLYsygl+eTkj4mY8hpk9GwdnjpoFaWNY+WcAlSDjP4aHNfdHCkzVbkAJA6MoPX5MNJrCRdq3NZXDuJJgzAYycdcarS9Up06/eZ1QtGuB1J5Dy0vusqE3NotKVlJdo2PFG5PmD5HSpH2+/II70T1LajqW4GI+lh1GrLbLt23yPUiROyXKrjlqTaa8d2GPcrhM07cwX5qn3R0GqrO1UbUnayxYb94qSvGPRsddBb/ae3/8Ad/p1PvXFt6ndKkjJMWVXGcq4+Y1TauzQ7UbqBe04A2COWTpezxCSFNymkeSeZMFmPIDPQDoBrdujSWO9FIvEr2pVYeoONPqbbTp5MUeWIwXc8TY9Mny1527INnQXtvJiZnAeMfq2/wBv/rXpmGG9WTvUKSBgGwRkA6//2Q==');
+        }
+        #section2 {
+            flex: 3;
+        }
+        div p {
+            margin-bottom: 2px;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="main">
+        <div class="section" id="section1"><div id="overthere"><h1>Trying to connect</h1></div></div>
+        <div class="section" id="section2">
+            <textarea id="testext" style="width:100%;height:100%;" rows="20"></textarea>
+        </div>
+    </div>
+    <script>
+        
+        function isMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        }
+
+        const ta = document.querySelector('#testext');
+        if(isMobile() || !SimpleMDE){
+            shitHappensAllTheTime = ta.value;
+            ta.addEventListener('input', ()=>{
+                let newval = ta.value;
+                globalThis.mWs?.send(dmp.patch_toText(dmp.patch_make(shitHappensAllTheTime,newval)))
+                shitHappensAllTheTime = newval;
+            });
+        }else{
+            let simplemde = new SimpleMDE({styleSelectedText: false, spellChecker: false, status: false, autofocus: true, element: ta, toolbar: [], forceSync: true});
+            shitHappensAllTheTime = simplemde.value();
+            simplemde.codemirror.on("change", function(){
+                let newval = simplemde.value();
+                globalThis.mWs?.send(dmp.patch_toText(dmp.patch_make(shitHappensAllTheTime,newval)));
+                shitHappensAllTheTime = newval;
+            });
+        }
+
+        // window.addEventListener('resize', function() {
+        //     document.body.style.height = '600' + 'px';
+        // });
+
+
+    </script>
+</body>
+</html>
